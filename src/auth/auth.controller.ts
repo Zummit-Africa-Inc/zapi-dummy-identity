@@ -11,7 +11,7 @@ import { PasswordResetDto } from '../user/dto/password-reset.dto';
 
 @ApiTags("Auth-Users")
 @Controller('auth')
-@Serialize(UserDto)
+//@Serialize(UserDto)
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
@@ -28,11 +28,14 @@ export class AuthController {
 
     @Post('/signin')
     @ApiOperation({description: 'Sign in a User'})
-    async signInUser(
-        @Body() body: SignInDto,
-        @Req() req: Request
-    ){
-        return this.authService.signin(body, { userAgent: req.headers['user-agent'], ipAddress: req.ip })
+    async signInUser(@Body() body: SignInDto, @Req() req: Request) {
+        return await this.authService.signin(body,{ userAgent: req.headers['user-agent'], ipAddress: req.ip });
+    }
+
+    @Post('/signout')
+    @ApiOperation({description: 'Sign out from Zapi'})
+    async signOutUser(@Body('refreshToken') refreshToken: string){
+        return await this.authService.signOut(refreshToken)
     }
     
     @Post('/forgot/post')

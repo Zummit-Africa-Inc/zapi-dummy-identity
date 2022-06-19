@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
 import { randomBytes, pbkdf2Sync } from "crypto";
 import { MailService } from '../mail/mail.service';
+import { jwtConstants } from '../common/constants/jwt.constant';
 
 
 @Injectable()
@@ -29,32 +30,56 @@ export class AuthService {
         return newUser
     }
 
-    async signin(user: SignInDto, values: {userAgent: string, ipAddress: string}){
-        let foundUser = await this.usersRepo.findOne({email: user.email});
-        if(foundUser){
-            let hash = this.usersRepo.hashPassword(user.password,foundUser.password.split(':')[0]);
-            let isPasswordCorrect = hash == foundUser.password;
-            console.log('Password is correct: ', isPasswordCorrect);
-            if(isPasswordCorrect){
-                return [foundUser, ZuAppResponse.Ok<object>(await this.getNewRefreshAndAccessTokens(values, foundUser),'Successfully logged in')]
-            }
-        }
-        throw new BadRequestException(
-            ZuAppResponse.BadRequest('Invalid Credentials')
-        )
-    }
+    async signin(user: SignInDto, values: {userAgent: string, ipAddress: string}) {
+      let foundUser = await this.usersRepo.findOne({email: user.email});
+      if(foundUser){
+          let hash = this.usersRepo.hashPassword(user.password,foundUser.password.split(':')[0]);
+          let isPasswordCorrect = hash == foundUser.password;
+          //let payload = {email: foundUser.email, password: foundUser.password};
+          if(isPasswordCorrect) {
+            return ZuAppResponse.Ok<object>(await this.getNewRefreshAndAccessTokens(values, foundUser), 'Successfully logged in');
+          }
+      }
+      throw new BadRequestException(
+          ZuAppResponse.BadRequest('Invalid Credentials', 'Check your email or password & try again!')
+      );
+  }
 
-    async getNewRefreshAndAccessTokens(values: {userAgent: string, ipAddress: string}, user){
-        const refreshobject = {
-            userAgent: values.userAgent,
-            ipAddress: values.ipAddress,
-            id: user.id
+  async getNewRefreshAndAccessTokens(values: {userAgent: string, ipAddress: string}, user){
+    const refreshobject = {
+      userAgent: values.userAgent,
+      ipAddress: values.ipAddress,
+      id: user.id
+    }
+  
+    return {
+      access: await this.jwtHelperService.signAccess(refreshobject),
+      refresh: await this.jwtHelperService.signRefresh(refreshobject)
+    }
+  }
+
+  async signOut(refreshToken: string){
+      try {
+        let payload = this.jwtTokenService.verify(refreshToken,{secret: await this.configService.get(jwtConstants.refresh_secret)})
+        payload = {
+          id: payload.id,
+          ipAddress: payload.ipAddress,
+          userAgent: payload.userAgent
         }
-    
-        return {
-            access: await this.jwtHelperService.signAccess(refreshobject),
-            refresh: await this.jwtHelperService.signRefresh(refreshobject)
-        }
+        let verified = await this.usersRepo.findOne({
+          where:{
+            refreshToken: refreshToken
+          }
+        })
+        if(verified){
+          await this.usersRepo.update({refreshToken: refreshToken}, {refreshToken: null})
+          return ZuAppResponse.Ok(verified.fullName,'Successfully logged out')
+        } else throw new Error()
+      } catch (err) {
+        throw new BadRequestException(
+          ZuAppResponse.BadRequest('Invalid Refresh Token','Get the correct refresh token and try again')
+        )
+      }
     }
 
     async forgotPassword(email: string){
