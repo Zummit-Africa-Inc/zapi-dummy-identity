@@ -11,6 +11,7 @@ import { PasswordResetDto } from '../user/dto/password-reset.dto';
 import { randomBytes, pbkdf2Sync } from "crypto";
 import { MailService } from '../mail/mail.service';
 import { jwtConstants } from '../common/constants/jwt.constant';
+import { SignOutDto } from './dto/signout.dto';
 
 
 @Injectable()
@@ -35,7 +36,6 @@ export class AuthService {
       if(foundUser){
           let hash = this.usersRepo.hashPassword(user.password,foundUser.password.split(':')[0]);
           let isPasswordCorrect = hash == foundUser.password;
-          //let payload = {email: foundUser.email, password: foundUser.password};
           if(isPasswordCorrect) {
             return ZuAppResponse.Ok<object>(await this.getNewRefreshAndAccessTokens(values, foundUser), 'Successfully logged in');
           }
@@ -58,9 +58,9 @@ export class AuthService {
     }
   }
 
-  async signOut(refreshToken: string){
+  async signOut(token: SignOutDto){
       try {
-        let payload = this.jwtTokenService.verify(refreshToken,{secret: await this.configService.get(jwtConstants.refresh_secret)})
+        let payload = this.jwtTokenService.verify(token.refreshToken,{secret: await this.configService.get(jwtConstants.refresh_secret)})
         payload = {
           id: payload.id,
           ipAddress: payload.ipAddress,
@@ -68,13 +68,13 @@ export class AuthService {
         }
         let verified = await this.usersRepo.findOne({
           where:{
-            refreshToken: refreshToken
+            refreshToken: token.refreshToken
           }
         })
         if(verified){
-          await this.usersRepo.update({refreshToken: refreshToken}, {refreshToken: null})
+          await this.usersRepo.update({refreshToken: token.refreshToken}, {refreshToken: null})
           return ZuAppResponse.Ok(verified.fullName,'Successfully logged out')
-        } else throw new Error()
+        }
       } catch (err) {
         throw new BadRequestException(
           ZuAppResponse.BadRequest('Invalid Refresh Token','Get the correct refresh token and try again')

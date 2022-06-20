@@ -7,17 +7,19 @@ import { SignInDto } from './dto/signin.dto';
 import { UserDto } from '../user/dto/user.dto';
 import { Request } from 'express';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
+import { SignOutDto } from './dto/signout.dto';
 
 
 @ApiTags("Auth-Users")
 @Controller('auth')
-//@Serialize(UserDto)
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
     ){}
+    
 
     @Post('/signup')
+    @Serialize(UserDto)
     @ApiOperation({description: 'Sign up a User'})
     async signUpUser(
         @Body() body: CreateUserDto,
@@ -34,17 +36,19 @@ export class AuthController {
 
     @Post('/signout')
     @ApiOperation({description: 'Sign out from Zapi'})
-    async signOutUser(@Body('refreshToken') refreshToken: string){
-        return await this.authService.signOut(refreshToken)
+    async signOutUser(@Body() refreshToken: SignOutDto){
+        return await this.authService.signOut(refreshToken);
     }
     
     @Post('/forgot/post')
+    @Serialize(UserDto)
     @ApiOperation({description:'submit email for password reset'})
     async forgotPassword(@Body() email: string){
         return await this.authService.forgotPassword(email)
     }
 
     @Post('/reset/:id/:token')
+    @Serialize(UserDto)
     @ApiOperation({description: 'password reset function'})
     async resetPassword(
         @Param('id', new ParseUUIDPipe()) id: string,
