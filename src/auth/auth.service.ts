@@ -18,6 +18,8 @@ import { lastValueFrom } from 'rxjs';
 import { configConstant } from '../common/constants/config.constant';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
+import { jwtConstants } from 'src/common/constants/jwt.constant';
 
 @Injectable()
 export class AuthService {
@@ -171,4 +173,19 @@ export class AuthService {
     await this.usersRepo.update(id, { password: hashedPassword });
     return user;
   }
+
+  async changePassword(dto: ChangePasswordDto ){
+    //verify access token
+    const payload = await this.jwtTokenService.verify(dto.accessToken, {secret: await this.configService.get(jwtConstants.access_secret)})
+    // throw error if token is not verified
+    if(!payload){
+      throw new BadRequestException(
+        ZuAppResponse.BadRequest("Access denied", "Invalid credentials")
+      );
+    };
+    //hash passwords
+    const hashedPassword = await this.jwtHelperService.hashPassword(dto.password,);
+    //update user password
+    return await this.usersRepo.update(payload.id, {password: hashedPassword});
+  };
 }
