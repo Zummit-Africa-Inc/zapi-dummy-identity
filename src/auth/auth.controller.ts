@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { AuthService } from './auth.service';
@@ -7,6 +7,7 @@ import { SignInDto } from './dto/signin.dto';
 import { UserDto } from '../user/dto/user.dto';
 import { Request } from 'express';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
+import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
 
 
 @ApiTags("Auth-Users")
@@ -61,5 +62,13 @@ export class AuthController {
         return updatedUser
     }
 
-    
+    @Serialize(UserDto)
+    @Patch('/changepassword')
+    @ApiOperation({description: 'update password'})
+    async changePassword(
+        @Body() dto: ChangePasswordDto
+    ){
+        const updatedUser = await this.authService.changePassword(dto)
+        return updatedUser
+    }
 }
