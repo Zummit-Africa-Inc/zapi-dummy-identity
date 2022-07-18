@@ -7,8 +7,8 @@ import { SignInDto } from './dto/signin.dto';
 import { UserDto } from '../user/dto/user.dto';
 import { Request } from 'express';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
-import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
 
+import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
 
 @ApiTags("Auth-Users")
 @Controller('auth')
