@@ -68,7 +68,7 @@ export class AuthController {
     async changePassword(
         @Body() dto: ChangePasswordDto
     ){
-        const updatedUser = await this.authService.changePassword(dto)
-        return updatedUser
+        await this.authService.changePassword(dto)
+        return {message: "Password successfully changed"}
     }
 }
