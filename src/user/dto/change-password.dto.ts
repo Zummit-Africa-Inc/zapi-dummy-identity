@@ -22,4 +22,8 @@ export class ChangePasswordDto{
     @MaxLength(20)
     @Match('password')
     passwordConfirm: string;
+
+    @IsString()
+    @IsNotEmpty({message: 'kindly input access token'})
+    accessToken: string
 }
