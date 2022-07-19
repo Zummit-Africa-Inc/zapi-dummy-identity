@@ -9,6 +9,7 @@ import { Request } from 'express';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
 
 import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
+import { ZuAppResponse } from 'src/common/helpers/response';
 
 @ApiTags("Auth-Users")
 @Controller('auth')
@@ -66,9 +67,9 @@ export class AuthController {
     @Patch('/changepassword')
     @ApiOperation({description: 'update password'})
     async changePassword(
-        @Body() dto: ChangePasswordDto
+        @Body() body: ChangePasswordDto
     ){
-        await this.authService.changePassword(dto)
-        return {message: "Password successfully changed"}
+        await this.authService.changePassword(body)
+        return ZuAppResponse.Ok( "Password updated", "200")
     }
 }
