@@ -24,13 +24,13 @@ export class ChangePasswordDto{
     newPassword: string;
 
     @IsString()
-    @IsNotEmpty({message: 'kindly confirm password'})
-    @Match('newPassword')
+    @IsNotEmpty({message: 'Please confirm your password'})
+    @Match('newPassword', {message: "New password and confirm password do not match"})
     @ApiProperty()
     newPasswordConfirm: string;
 
     @IsString()
     @ApiProperty()
-    @IsNotEmpty({message: 'kindly input access token'})
+    @IsNotEmpty({message: 'Please input your signin access token'})
     accessToken: string
  }
