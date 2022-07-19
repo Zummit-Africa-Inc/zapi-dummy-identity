@@ -7,6 +7,7 @@ export class CreateUserDto {
     fullName: string
 
     @IsEmail()
+    @ApiProperty()
     @IsString()
     email: string
 

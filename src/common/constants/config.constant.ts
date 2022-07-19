@@ -12,5 +12,8 @@ export const configConstant = {
   },
   profileUrl: {
     baseUrl: 'CORE_SERVICE_BASE_URL'
+  },
+  emailNotice: {
+    noticeUrl: 'EMAIL_NOTIFICATION_URL'
   }
 };

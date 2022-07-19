@@ -43,19 +43,19 @@ export class AuthService {
     });
     // TODO: send POST request to the profile service to create the profile
     // Axios
-    const new_Profile = this.httpService.post(
-      `${this.configService.get<string>(
-        configConstant.profileUrl.baseUrl,
-      )}/profile/create`,
-      {
-        user_id: newUser.id,
-        email: newUser.email,
-      },
-    );
+    // const new_Profile = this.httpService.post(
+    //   `${this.configService.get<string>(
+    //     configConstant.profileUrl.baseUrl,
+    //   )}/profile/create`,
+    //   {
+    //     user_id: newUser.id,
+    //     email: newUser.email,
+    //   },
+    // );
 
-    const newProfile = await lastValueFrom(new_Profile.pipe());
-    const profileData = newProfile.data;
-    newUser.profileID = profileData.id;
+    // const newProfile = await lastValueFrom(new_Profile.pipe());
+    // const profileData = newProfile.data;
+    // newUser.profileID = profileData.id;
 
     const new_User = await this.usersRepo.save(newUser);
 
@@ -150,9 +150,23 @@ export class AuthService {
       payload,
       currentPassword,
     );
-    const resetLink = `http://localhost:3000/api-hub/auth/reset/${user.id}/${resetToken}`;
-    // await this.mailService.sendResetLink(user, resetLink) -> this is to send the reset link to the user's email instead
-    return resetLink;
+    const resetUrl = process.env.PSWRDRSTURL
+    const passwordResetUrl = process.env.EMAIL_NOTIFICATION_URL
+    const resetLink = `${resetUrl}/${user.id}/${resetToken}`;
+    const emailLink = {
+      email: user.email,
+      subject: "Password Reset Request",
+      text: `Kindly click the link below to proceed with the password reset 
+            \n ${resetLink}`
+    }
+    const p = this.httpService.axiosRef;
+    // This sends the reset link to the registered email of the user
+    const axiosRes = await p({
+      method: 'post',
+      url: passwordResetUrl,
+      data: emailLink
+    })
+    return [resetLink, `reset link sent to ${user.email} successfully` ];
   }
 
   async resetPassword(id: string, token: string, body: PasswordResetDto) {
