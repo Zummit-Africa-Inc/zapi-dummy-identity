@@ -70,6 +70,6 @@ export class AuthController {
         @Body() body: ChangePasswordDto
     ){
         await this.authService.changePassword(body)
-        return ZuAppResponse.Ok( "Password updated", "200")
+        return ZuAppResponse.Ok("Password updated", "200")
     }
 }
