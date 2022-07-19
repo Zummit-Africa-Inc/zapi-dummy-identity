@@ -176,16 +176,28 @@ export class AuthService {
   }
 
   async changePassword(dto: ChangePasswordDto ){
+
     //verify access token
     const payload = await this.jwtTokenService.verify(dto.accessToken, {secret: await this.configService.get(jwtConstants.access_secret)})
-    // throw error if token is not verified
     if(!payload){
       throw new BadRequestException(
         ZuAppResponse.BadRequest("Access denied", "Invalid credentials")
       );
     };
-    //hash passwords
-    const hashedPassword = await this.jwtHelperService.hashPassword(dto.password,);
+    //get current user password
+    const user = await this.usersRepo.findOne({where:{id: payload.id}})
+    const currentPasswordHash = user.password
+    // hash old password
+    const oldPasswordHash = await this.jwtHelperService.hashPassword(dto.oldPassword, user.password.split(':')[0] )
+    //compare passwords
+    const isPasswordCorrect = oldPasswordHash == currentPasswordHash
+    if (!isPasswordCorrect){
+      throw new BadRequestException(
+        ZuAppResponse.BadRequest('Access Denied!', 'Incorrect Password')
+      )
+    }
+    //hash new password
+    const hashedPassword = await this.jwtHelperService.hashPassword(dto.newPassword, user.password.split(':')[0]);
     //update user password
     return await this.usersRepo.update(payload.id, {password: hashedPassword});
   };
