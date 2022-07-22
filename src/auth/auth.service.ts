@@ -175,16 +175,9 @@ export class AuthService {
     return user;
   }
 
-  async changePassword(dto: ChangePasswordDto ){
-    //verify access token
-    const payload = await this.jwtTokenService.verify(dto.accessToken, {secret: await this.configService.get(jwtConstants.access_secret)})
-    if(!payload){
-      throw new BadRequestException(
-        ZuAppResponse.BadRequest("Access denied!", "Invalid access token","401")
-      );
-    };
+  async changePassword(id: string, dto: ChangePasswordDto ){
     //get current user password hash from database
-    const user = await this.usersRepo.findOne({where:{id: payload.id}})
+    const user = await this.usersRepo.findOne({where:{id: id}})
     const currentPasswordHash = user.password
     // hash old password from request body
     const oldPasswordHash = await this.jwtHelperService.hashPassword(dto.oldPassword, user.password.split(':')[0] )
@@ -198,6 +191,6 @@ export class AuthService {
     //hash new password
     const hashedPassword = await this.jwtHelperService.hashPassword(dto.newPassword, user.password.split(':')[0]);
     //update user password
-    return await this.usersRepo.update(payload.id, {password: hashedPassword});
+    return await this.usersRepo.update(id, {password: hashedPassword});
   };
 }
