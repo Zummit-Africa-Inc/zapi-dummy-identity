@@ -64,12 +64,13 @@ export class AuthController {
     }
 
     //@Serialize(UserDto)
-    @Patch('/changepassword')
+    @Patch('/changepassword/:id')
     @ApiOperation({description: 'update password'})
     async changePassword(
+        @Param('id') id: string,
         @Body() body: ChangePasswordDto
     ){
-        await this.authService.changePassword(body)
+        await this.authService.changePassword(id, body)
         return ZuAppResponse.Ok("Password updated", "200")
     }
 }
