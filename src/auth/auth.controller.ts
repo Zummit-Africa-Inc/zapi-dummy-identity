@@ -63,6 +63,10 @@ export class AuthController {
         return updatedUser
     }
 
+    
+    
+    
+    
     //@Serialize(UserDto)
     @Patch('/changepassword/:id')
     @ApiOperation({description: 'update password'})
