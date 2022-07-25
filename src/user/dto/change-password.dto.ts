@@ -12,10 +12,4 @@ export class ChangePasswordDto{
     @ApiProperty()
     @IsNotEmpty({message: 'Please input your new password'})
     newPassword: string;
-
-    @IsString()
-    @IsNotEmpty({message: 'Please confirm your password'})
-    @Match('newPassword', {message: "New password and confirm password do not match"})
-    @ApiProperty()
-    newPasswordConfirm: string;
  }
