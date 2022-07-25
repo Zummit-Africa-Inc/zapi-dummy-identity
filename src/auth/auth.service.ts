@@ -8,6 +8,7 @@ import { ZuAppResponse } from '../common/helpers/response';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { SignInDto } from './dto/signin.dto';
 import { JwtService } from '@nestjs/jwt';
+import { Ok } from '../common/helpers/response';
 import { JwtHelperService } from './jwtHelper.service';
 import { ConfigService } from '@nestjs/config';
 import { PasswordResetDto } from '../user/dto/password-reset.dto';
@@ -18,6 +19,7 @@ import { lastValueFrom } from 'rxjs';
 import { configConstant } from '../common/constants/config.constant';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EmailVerificationService } from '../email-verification/email-verification.service';
 
 import { ChangePasswordDto } from 'src/user/dto/change-password.dto';
 import { jwtConstants } from 'src/common/constants/jwt.constant';
@@ -32,6 +34,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private mailService: MailService,
     private httpService: HttpService,
+    private emailVerificationService: EmailVerificationService,
   ) {}
 
   async signup(user: CreateUserDto) {
@@ -44,25 +47,11 @@ export class AuthService {
         ),
       );
     });
-    // TODO: send POST request to the profile service to create the profile
-    // Axios
-    const new_Profile = this.httpService.post(
-      `${this.configService.get<string>(
-        configConstant.profileUrl.baseUrl,
-      )}/profile/create`,
-      {
-        user_id: newUser.id,
-        email: newUser.email,
-      },
-    );
 
-    const newProfile = await lastValueFrom(new_Profile.pipe());
-    const profileData = newProfile.data;
-    newUser.profileID = profileData.id;
+    //send a verification link to the user
+    await this.emailVerificationService.sendVerificationLink(newUser.email);
 
-    const new_User = await this.usersRepo.save(newUser);
-
-    return new_User;
+    return newUser;
   }
 
   async signin(
@@ -72,26 +61,38 @@ export class AuthService {
     const user = await this.usersRepo.findOne({ where: { email: dto.email } });
     if (!user)
       throw ZuAppResponse.BadRequest('Not found', 'Invalid Credentials!');
-
-    const hash = await this.jwtHelperService.hashPassword(
-      dto.password,
-      user.password.split(':')[0],
-    );
-    let isPasswordCorrect = hash == user.password;
-    if (!isPasswordCorrect)
-      throw ZuAppResponse.BadRequest('Access Denied!', 'Incorrect Credentials');
-    const tokens = await this.getNewRefreshAndAccessTokens(values, user);
-    return ZuAppResponse.Ok<object>(
-      {
-        ...tokens,
-        userId: user.id,
-        profileId: user.profileID,
-        email: user.email,
-        fullName: user.fullName,
-      },
-      'Successfully logged in',
-      201,
-    );
+    if (user.isEmailVerified) {
+      const hash = await this.jwtHelperService.hashPassword(
+        dto.password,
+        user.password.split(':')[0],
+      );
+      let isPasswordCorrect = hash == user.password;
+      if (!isPasswordCorrect)
+        throw ZuAppResponse.BadRequest(
+          'Access Denied!',
+          'Incorrect Credentials',
+        );
+      const tokens = await this.getNewRefreshAndAccessTokens(values, user);
+      return ZuAppResponse.Ok<object>(
+        {
+          ...tokens,
+          userId: user.id,
+          profileId: user.profileID,
+          email: user.email,
+          fullName: user.fullName,
+        },
+        'Successfully logged in',
+        201,
+      );
+    } else {
+      throw new BadRequestException(
+        ZuAppResponse.BadRequest(
+          'Access Denied',
+          'Please verify your email before logging in',
+          '401',
+        ),
+      );
+    }
   }
 
   async signout(refreshToken: string) {
@@ -133,7 +134,7 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string): Promise<string> {
     const user: User = await this.usersRepo.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException(
@@ -153,12 +154,36 @@ export class AuthService {
       payload,
       currentPassword,
     );
-    const resetLink = `http://localhost:3000/api-hub/auth/reset/${user.id}/${resetToken}`;
-    // await this.mailService.sendResetLink(user, resetLink) -> this is to send the reset link to the user's email instead
-    return resetLink;
+
+    //url paths
+    const baseUrl = this.configService.get(configConstant.baseUrl.identityUrl)
+    const notifyUrl = this.configService.get(configConstant.baseUrl.nofication)
+    const resetEndpoint = `${baseUrl}/Auth-Users/AuthController_resetPassword/${resetToken}`;
+    const frontEndBase = this.configService.get(configConstant.baseUrl.identityUrlFE)
+    const resetPage = `${frontEndBase}/password-reset`
+    const emailUrlPath = `${notifyUrl}/email/send-mail`
+
+
+    const emailLink = {
+      email: user.email,
+      subject: "Password Reset Request",
+      text: `Kindly click the link below to proceed with the password reset 
+            \n ${resetPage}`
+    }
+    const p = this.httpService.axiosRef;
+    // This sends the reset link to the registered email of the user
+    const axiosRes = await p({
+      method: 'post',
+      url: emailUrlPath,
+      data: emailLink
+    })
+    return resetEndpoint
   }
 
-  async resetPassword(id: string, token: string, body: PasswordResetDto) {
+
+  async resetPassword(id: string, token: string, body: PasswordResetDto) 
+  : Promise<User>
+  {
     const user: User = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(
@@ -172,7 +197,7 @@ export class AuthService {
     );
     let hashedPassword = `${salt}:${hash}`;
     await this.usersRepo.update(id, { password: hashedPassword });
-    return user;
+    return user
   }
 
   async changePassword(id: string, dto: ChangePasswordDto ){
